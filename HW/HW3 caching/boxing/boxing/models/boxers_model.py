@@ -202,12 +202,11 @@ class Boxers(db.Model):
 
         """
         boxer = cls.get_boxer_by_id(boxer_id)
-        if boxer is None:
-            logger.info(f"Boxer with ID {boxer_id} not found.")
-            raise ValueError(f"Boxer with ID {boxer_id} not found.")
         db.session.delete(boxer)
         db.session.commit()
         logger.info(f"Boxer with ID {boxer_id} permanently deleted.")
+
+
 
 
     def update_stats(self, result: str) -> None:
@@ -254,8 +253,12 @@ class Boxers(db.Model):
             logger.error(f"Invalid sort_by parameter: {sort_by}")
             raise ValueError(f"Invalid sort_by parameter: {sort_by}")
 
-        boxers = Boxers.query.filter(Boxers.fights > 0).all()
-
+        try:
+            boxers = Boxers.query.filter(Boxers.fights > 0).all()
+        except SQLAlchemyError as e:
+            logger.error(f"DB error fetching boxers for leaderboards: {e}")
+            raise
+        
         def compute_win_pct(b: Boxers) -> float:
             return round((b.wins / b.fights) * 100, 1) if b.fights > 0 else 0.0
 
