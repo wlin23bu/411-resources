@@ -32,7 +32,9 @@ class Users():
         Returns:
             tuple: A tuple containing the salt and hashed password.
         """
-        pass
+        salt = os.urandom(16).hex()
+        hashed_password = hashlib.sha256((password+salt).encode()).hexdigest()
+        return salt, hashed_password
 
     @classmethod
     def create_user(cls, username: str, password: str) -> None:
@@ -46,12 +48,20 @@ class Users():
         Raises:
             ValueError: If a user with the username already exists.
         """
+        salt, hashed_password = cls._generate_hashed_password(password)
+        new_user = cls(username=username, salt=salt, password=hashed_password)
         try:
+            db.session.add(new_user)
+            db.session.commit()
             logger.info("User successfully added to the database: %s", username)
         except IntegrityError:
+            db.session.rollback()
             logger.error("Duplicate username: %s", username)
+            raise ValueError(f"User with username '{username}' already exists in database")
         except Exception as e:
+            db.session.rollback()
             logger.error("Database error: %s", str(e))
+            raise
 
     @classmethod
     def check_password(cls, username: str, password: str) -> bool:
@@ -68,9 +78,13 @@ class Users():
         Raises:
             ValueError: If the user does not exist.
         """
+        user = cls.query.filter_by(username=username).first()
         if not user:
+            logger.info("User %s not found", username)
             raise ValueError(f"User {username} not found")
-        pass
+        hashed_password = hashlib.sha256((password +user.salt).encode()).hexdigest()
+
+        return hashed_password == user.password #pass through sha256 hash if the password is the same as the user password in db then return true. else false
 
     @classmethod
     def delete_user(cls, username: str) -> None:
@@ -83,18 +97,22 @@ class Users():
         Raises:
             ValueError: If the user does not exist.
         """
+        user= cls.query.filter_by(username=username).first()
         if not user:
             logger.info("User %s not found", username)
+            raise ValueError(f"User {username} not found")
+        db.session.delete(user)
+        db.session.commit()
         logger.info("User %s deleted successfully", username)
 
-    def get_id(self) -> str:
+    def get_id(self) -> str: #just a class function similar to boxers_models.py's get_weight_class function
         """
         Get the ID of the user.
 
         Returns:
             str: The ID of the user.
         """
-        pass
+        return self.username
 
     @classmethod
     def get_id_by_username(cls, username: str) -> int:
@@ -110,9 +128,11 @@ class Users():
         Raises:
             ValueError: If the user does not exist.
         """
+        user = cls.query.filter_by(username=username).first()
         if not user:
+            logger.info("User %s not found", username)
             raise ValueError(f"User {username} not found")
-        pass
+        return user.id
 
     @classmethod
     def update_password(cls, username: str, new_password: str) -> None:
@@ -126,7 +146,13 @@ class Users():
         Raises:
             ValueError: If the user does not exist.
         """
+        user= cls.query.filter_by(username=username).first()
         if not user:
             logger.info("User %s not found", username)
+            raise ValueError(f"user {username} not found")
 
+        salt, hashed_password = cls._generate_hashed_password(new_password)
+        user.salt = salt 
+        user.password = hashed_password
+        db.session.commit()
         logger.info("Password updated successfully for user: %s", username)
