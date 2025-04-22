@@ -159,7 +159,7 @@ class Boxers(db.Model):
         """
         logger.info(f"Retrieving boxer with ID {boxer_id}")
         try:
-            boxer = cls.query.get(boxer_id)
+            boxer = db.session.get(cls, boxer_id)
         except SQLAlchemyError as e:
             logger.error(f"DB error when fetching boxer {boxer_id}: {e}")
             raise
@@ -212,12 +212,12 @@ class Boxers(db.Model):
         logger.info(f"Received request to delete boxer with ID {boxer_id}")
 
         try:
-            boxer = cls.query.get(boxer_id)
+            boxer = db.session.get(cls, boxer_id)
         except SQLAlchemyError as e:
             logger.error(f"DB error when looking up boxer {boxer_id}: {e}")
             raise
 
-        if not boxer:
+        if boxer is none:
             logger.error(f"Boxer with ID {boxer_id} not found")
             raise ValueError(f"Boxer with ID {boxer_id} does not exist")
 
