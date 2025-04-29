@@ -5,8 +5,8 @@ import os
 from flask_login import UserMixin
 from sqlalchemy.exc import IntegrityError
 
-from boxing.db import db
-from boxing.utils.logger import configure_logger
+from todo.db import db
+from todo.utils.logger import configure_logger
 
 
 logger = logging.getLogger(__name__)
