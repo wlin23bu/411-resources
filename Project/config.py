@@ -12,9 +12,15 @@ class ProductionConfig():
     SECRET_KEY = os.getenv("SECRET_KEY", "test-secret-key")  # Default secret key for testing
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     SQLALCHEMY_ECHO = False
-    SQLALCHEMY_DATABASE_URI = os.getenv('DATABASE_URL', "sqlite:////app/db/app.db")  # Production database URI from environment
+    
+    db_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'instance', 'app.db')
+    #   os.makedirs(os.path.dirname(db_path))
+    os.makedirs(os.path.dirname(db_path), exist_ok=True)
+    SQLALCHEMY_DATABASE_URI = os.getenv('DATABASE_URL', f"sqlite:///{db_path}")
 
 class TestConfig():
     """Testing configuration."""
     TESTING = True
     SQLALCHEMY_DATABASE_URI = 'sqlite:///:memory:'  # Use in-memory database for tests
+    SECRET_KEY = "test-secret-key"
+    SQLALCHEMY_TRACK_MODIFICATIONS = False

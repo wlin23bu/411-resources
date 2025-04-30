@@ -8,8 +8,10 @@ sys.path.insert(0, ROOT)
 from app import create_app
 from config import TestConfig
 from todo.db import db
+from todo.models.task_model import Task 
+from todo.models.user_model import Users
 
-@pytest.fixture
+@pytest.fixture(scope='session')
 def app():
     app = create_app(TestConfig)
     with app.app_context():
@@ -22,7 +24,23 @@ def app():
 def client(app):
     return app.test_client()
 
-@pytest.fixture
+@pytest.fixture(scope='function')
 def session(app):
     with app.app_context():
+        db.session.query(Task).delete()
+        db.session.query(Users).delete() 
+        db.session.commit()
+        
         yield db.session
+        #  db.session.commit()
+        db.session.rollback()
+        db.session.query(Task).delete()
+        db.session.query(Users).delete()
+        db.session.commit()
+        db.session.remove()
+
+@pytest.fixture(autouse=True)
+def app_context(app):
+    """Ensure all tests run within an application context"""
+    with app.app_context():
+        yield

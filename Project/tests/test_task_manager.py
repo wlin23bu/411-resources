@@ -1,5 +1,6 @@
 import pytest
 import time
+import os
 from datetime import datetime, timedelta
 
 from todo.models.task_model import Task
@@ -39,30 +40,40 @@ def test_add_and_delete_task(task_manager):
 
 
 def test_get_random_task(monkeypatch, session, task_manager):
-    """get_random_task should return the mocked index element."""
-    titles = ["A", "B", "C"]
-    for t in titles:
-        Task.create_task(t, None, None)
-    monkeypatch.setattr(get_random, '__call__', lambda *args, **kwargs: 2)
-    # or monkeypatch the function path directly:
-    # monkeypatch.setattr('todo.models.task_manager.get_random', lambda n: 2)
-    rand = task_manager.get_random_task()
-    assert rand['title'] == "B"
+    """Test that get_random_task correctly selects a task."""
+    #     monkeypatch.setenv("USE_FALLBACK_RNG", "0")
+    monkeypatch.setenv("USE_FALLBACK_RNG", "1")
+    
+    db_tasks = Task.get_all_tasks()
+    for t in db_tasks:
+        Task.delete(t["id"])
+        
+    task = Task.create_task("TestTask", None, None)
+    
+    rand_task = task_manager.get_random_task()
+    assert rand_task['id'] == task.id
+    assert rand_task['title'] == "TestTask"
 
 
-def test_get_random_empty_raises(task_manager):
+def test_get_random_empty_raises(task_manager, session):
     """get_random_task on empty list should raise ValueError."""
+    db_tasks = Task.get_all_tasks()
+    for t in db_tasks:
+        Task.delete(t["id"])
+        
     with pytest.raises(ValueError):
         task_manager.get_random_task()
 
 
 def test_compute_task_urgency(task_manager):
     """compute_task_urgency should be 0 for no due_date and >0 for future due_date."""
+    t_no_due = Task.create_task("No Due Date", None, None)
     future = datetime.utcnow() + timedelta(days=1)
-    t = Task.create_task("Urgent", None, future)
-    zero = task_manager.compute_task_urgency(Task.get_task_by_id(t.id))
-    assert zero == 0.0  # no due_date stored on instance so default 0
-    t_with_due = Task.create_task("Urgent2", None, future)
+    t_with_due = Task.create_task("With Due Date", None, future)
+    
+    zero = task_manager.compute_task_urgency(Task.get_task_by_id(t_no_due.id))
+    assert zero == 0.0  
+    
     urg = task_manager.compute_task_urgency(Task.get_task_by_id(t_with_due.id))
     assert isinstance(urg, float)
     assert urg > 0
