@@ -415,11 +415,15 @@ def create_app(config_class=ProductionConfig):
             }), 500)
 
     @app.route('/api/tasks/<int:task_id>', methods=['DELETE'])
+    @login_required
     def delete_task(task_id: int) -> Response:
         """Delete a task by ID."""
         try:
             Task.delete(task_id)
-            return make_response('', 204)
+            return make_response(jsonify({
+                "status": "success", 
+                "message": f"Task {task_id} deleted"
+            }), 200)
         except ValueError as ve:
             return make_response(jsonify({
                 "status": "error",
@@ -430,6 +434,38 @@ def create_app(config_class=ProductionConfig):
             return make_response(jsonify({
                 "status": "error",
                 "message": "Internal server error",
+                "details": str(e)
+            }), 500)
+
+    @app.route('/api/tasks/random', methods=['GET'])
+    @login_required
+    def get_random_task() -> Response:
+        """
+        Get a random task from the user's task list.
+        
+        Returns:
+            JSON 200 with a random task.
+            
+        Raises:
+            404 if no tasks found.
+            500 on other errors.
+        """
+        try:
+            random_task = task_manager.get_random_task()
+            return make_response(jsonify({
+                "status": "success",
+                "task": random_task
+            }), 200)
+        except ValueError as ve:
+            return make_response(jsonify({
+                "status": "error",
+                "message": str(ve)
+            }), 404)
+        except Exception as e:
+            app.logger.error(f"Error retrieving random task: {e}")
+            return make_response(jsonify({
+                "status": "error",
+                "message": "Error retrieving random task",
                 "details": str(e)
             }), 500)
 
